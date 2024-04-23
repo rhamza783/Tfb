@@ -2,33 +2,33 @@ const { Telegraf } = require('telegraf');
 require('dotenv').config();
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
+const ownerId = process.env.OWNER_ID; // Bot owner's Telegram ID
 
-bot.start((ctx) => ctx.reply('Welcome to the Feedback Bot! Send me any feedback and I\'ll forward it. Type /help for more commands.'));
-bot.help((ctx) => ctx.reply('You can use this bot to send anonymous feedback. Just type your message and send it to me. Use /about to learn more about this bot.'));
-bot.command('about', (ctx) => ctx.reply('Feedback Bot v1.0. Created to collect user feedback and improve our services.'));
-bot.command('ping', (ctx) => {
-  const start = new Date();
-  ctx.reply('Pong!').then(() => {
-    const end = new Date();
-    ctx.reply(`Response time: ${end - start} ms`);
+// Helper function to send a reply from the owner
+const sendOwnerReply = (ctx, originalMessageId, text) => {
+  ctx.telegram.sendMessage(ctx.chat.id, text, {
+    reply_to_message_id: originalMessageId,
   });
-});
+};
+
+bot.start((ctx) => ctx.reply('Welcome! Send me any feedback or message and I will forward it.'));
+bot.help((ctx) => ctx.reply('You can use this bot to send messages. Just type your message and send it to me.'));
+
+// Forward messages to the owner and wait for a reply
 bot.on('text', (ctx) => {
   const feedback = ctx.message.text;
-  const ownerId = process.env.OWNER_ID;
-  let replyMessage = 'Thank you for your feedback!';
-  if (feedback.includes('bug')) {
-    replyMessage += ' We will look into the issue.';
-  } else if (feedback.includes('feature')) {
-    replyMessage += ' Feature requests are always welcome!';
-  }
   ctx.telegram.forwardMessage(ownerId, ctx.from.id, ctx.message.message_id)
-    .then(() => {
-      ctx.reply(replyMessage);
+    .then((forwardedMessage) => {
+      // Listen for the owner's reply to the forwarded message
+      bot.on('message', (replyCtx) => {
+        if (replyCtx.message.reply_to_message && replyCtx.message.reply_to_message.message_id === forwardedMessage.message_id) {
+          sendOwnerReply(ctx, ctx.message.message_id, replyCtx.message.text);
+        }
+      });
     })
     .catch((error) => {
       console.error('Error forwarding message:', error);
-      ctx.reply('There was an error sending your feedback. Please try again later.');
+      ctx.reply('There was an error sending your message. Please try again later.');
     });
 });
 
