@@ -15,10 +15,15 @@ bot.command('about', (ctx) => {
   ctx.reply('This is a Telegram bot created using Telegraf.');
 });
 
-// Register the /ping command with parameters
+// Register the /ping command with response time
 bot.command('ping', (ctx) => {
+  const startTime = Date.now(); // Record the start time
   const args = ctx.message.text.split(' ').slice(1); // Split the message text and remove the first element (/ping)
-  const response = `Pong! Received parameters: ${args.join(', ')}`;
+  const responseTime = Date.now() - startTime; // Calculate the response time
+  let response = `Pong!\nResponse time: ${responseTime} ms`;
+  if (args.length > 0) {
+    response += `\nReceived parameters: ${args.join(', ')}`;
+  }
   ctx.reply(response);
 });
 
