@@ -7,7 +7,7 @@ let userFeedbackMap = new Map(); // Map to track user IDs and their feedback mes
 
 // Register the /help command
 bot.command('help', (ctx) => {
-  ctx.reply('hey i m Hamza Younis How can I assist you? feel free and chat with me.');
+  ctx.reply('Hey, I am Hamza Younis. How can I assist you? Feel free and chat with me.');
 });
 
 // Register the /about command
@@ -30,8 +30,10 @@ bot.command('ping', (ctx) => {
 // Function to forward messages from users to the owner
 bot.on('text', (ctx) => {
   if (ctx.from.id.toString() !== ownerId) {
+    console.log(`Forwarding message from ${ctx.from.id} to owner.`);
     ctx.telegram.forwardMessage(ownerId, ctx.from.id, ctx.message.message_id)
       .then((forwardedMessage) => {
+        console.log(`Message forwarded to owner with message ID: ${forwardedMessage.message_id}`);
         // Store the mapping of the forwarded message to the original sender's ID
         userFeedbackMap.set(forwardedMessage.message_id, ctx.from.id);
       })
@@ -45,11 +47,14 @@ bot.on('text', (ctx) => {
 // Function to handle replies from the owner and forward them to the original sender
 bot.on('text', (ctx) => {
   if (ctx.from.id.toString() === ownerId && ctx.message.reply_to_message) {
+    console.log(`Owner is replying to message ID: ${ctx.message.reply_to_message.message_id}`);
     const originalMessageId = ctx.message.reply_to_message.message_id;
     if (userFeedbackMap.has(originalMessageId)) {
       const targetUserId = userFeedbackMap.get(originalMessageId);
+      console.log(`Sending reply to user ID: ${targetUserId}`);
       ctx.telegram.sendMessage(targetUserId, ctx.message.text)
         .then(() => {
+          console.log(`Reply sent to user ID: ${targetUserId}`);
           // Optionally, remove the mapping once the reply is sent
           userFeedbackMap.delete(originalMessageId);
         })
