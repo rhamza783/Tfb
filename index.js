@@ -1,10 +1,26 @@
-// Run 'npm install punycode.js' in your terminal to install the punycode.js package
 const { Telegraf } = require('telegraf');
 require('dotenv').config();
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const ownerId = process.env.OWNER_ID; // Bot owner's Telegram ID
 let userFeedbackMap = new Map(); // Map to track user IDs and their feedback message IDs
+
+// Register the /help command
+bot.command('help', (ctx) => {
+  ctx.reply('How can I assist you?');
+});
+
+// Register the /about command
+bot.command('about', (ctx) => {
+  ctx.reply('This is a Telegram bot created using Telegraf.');
+});
+
+// Register the /ping command with parameters
+bot.command('ping', (ctx) => {
+  const args = ctx.message.text.split(' ').slice(1); // Split the message text and remove the first element (/ping)
+  const response = `Pong! Received parameters: ${args.join(', ')}`;
+  ctx.reply(response);
+});
 
 // Function to forward messages from users to the owner
 bot.on('text', (ctx) => {
