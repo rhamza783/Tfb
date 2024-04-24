@@ -46,25 +46,32 @@ bot.on('text', (ctx) => {
 
 // Function to handle replies from the owner and forward them to the original sender
 bot.on('text', (ctx) => {
+  // Check if the message is a reply from the owner
   if (ctx.from.id.toString() === ownerId && ctx.message.reply_to_message) {
     console.log(`Owner is replying to message ID: ${ctx.message.reply_to_message.message_id}`);
-    const originalMessageId = ctx.message.reply_to_message.message_id;
-    if (userFeedbackMap.has(originalMessageId)) {
-      const targetUserId = userFeedbackMap.get(originalMessageId);
-      console.log(`Sending reply to user ID: ${targetUserId}`);
-      ctx.telegram.sendMessage(targetUserId, ctx.message.text)
+    // Retrieve the original message ID from the forwarded message
+    const forwardedMessageId = ctx.message.reply_to_message.message_id;
+    // Check if the original message ID is stored in the map
+    if (userFeedbackMap.has(forwardedMessageId)) {
+      // Retrieve the original user's ID
+      const originalUserId = userFeedbackMap.get(forwardedMessageId);
+      console.log(`Attempting to send reply to original user ID: ${originalUserId}`);
+      // Send the owner's reply to the original user
+      ctx.telegram.sendMessage(originalUserId, ctx.message.text)
         .then(() => {
-          console.log(`Reply sent to user ID: ${targetUserId}`);
+          console.log(`Reply successfully sent to user ID: ${originalUserId}`);
           // Optionally, remove the mapping once the reply is sent
-          userFeedbackMap.delete(originalMessageId);
+          userFeedbackMap.delete(forwardedMessageId);
         })
         .catch((error) => {
-          console.error('Error sending reply:', error);
-          ctx.reply('There was an error sending your reply. Please try again later.');
+          console.error(`Error sending reply to user ID: ${originalUserId}`, error);
         });
+    } else {
+      console.log(`No mapping found for forwarded message ID: ${forwardedMessageId}`);
     }
   }
 });
 
 // Start polling
 bot.launch();
+  
