@@ -7,12 +7,12 @@ let userFeedbackMap = new Map(); // Map to track user IDs and their feedback mes
 
 // Register the /help command
 bot.command('help', (ctx) => {
-  ctx.reply('How can I assist you?');
+  ctx.reply('hey i m Hamza Younis How can I assist you? feel free and chat with me.');
 });
 
 // Register the /about command
 bot.command('about', (ctx) => {
-  ctx.reply('This is a Telegram bot created using Telegraf.');
+  ctx.reply('This is a Telegram bot created using Telegraf by Hamza Younis.');
 });
 
 // Register the /ping command with response time
@@ -55,9 +55,11 @@ bot.on('text', (ctx) => {
         })
         .catch((error) => {
           console.error('Error sending reply:', error);
+          ctx.reply('There was an error sending your reply. Please try again later.');
         });
     }
   }
 });
 
+// Start polling
 bot.launch();
