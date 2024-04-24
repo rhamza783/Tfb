@@ -5,66 +5,46 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 const ownerId = process.env.OWNER_ID; // Bot owner's Telegram ID
 let userFeedbackMap = new Map(); // Map to track user IDs and their feedback message IDs
 
-// Register the /help command
-bot.command('help', (ctx) => {
-  ctx.reply('Hey, I am Hamza Younis. How can I assist you? Feel free and chat with me.');
-});
+// ... other command definitions (help, about, ping)
 
-// Register the /about command
-bot.command('about', (ctx) => {
-  ctx.reply('This is a Telegram bot created using Telegraf by Hamza Younis.');
-});
-
-// Register the /ping command with response time
-bot.command('ping', (ctx) => {
-  const startTime = Date.now(); // Record the start time
-  const args = ctx.message.text.split(' ').slice(1); // Split the message text and remove the first element (/ping)
-  const responseTime = Date.now() - startTime; // Calculate the response time
-  let response = `Pong!\nResponse time: ${responseTime} ms`;
-  if (args.length > 0) {
-    response += `\nReceived parameters: ${args.join(', ')}`;
-  }
-  ctx.reply(response);
-});
-
-// Function to forward messages from users to the owner
+// Function to handle messages from the admin
 bot.on('text', (ctx) => {
-  if (ctx.from.id.toString() !== ownerId) {
-    console.log(`Forwarding message from ${ctx.from.id} to owner.`);
-    ctx.telegram.forwardMessage(ownerId, ctx.from.id, ctx.message.message_id)
-      .then((forwardedMessage) => {
-        console.log(`Message forwarded to owner with message ID: ${forwardedMessage.message_id}`);
-        // Store the mapping of the forwarded message to the original sender's ID
-        userFeedbackMap.set(forwardedMessage.message_id, ctx.from.id);
-      })
-      .catch((error) => {
-        console.error('Error forwarding message:', error);
-        ctx.reply('There was an error sending your message. Please try again later.');
-      });
-  }
-});
+  if (ctx.from.id.toString() === ownerId) {
+    // Check if the message starts with a username followed by a colon
+    if (ctx.message.text.startsWith('@') && ctx.message.text.includes(':')) {
+      const parts = ctx.message.text.split(':');
+      const username = parts[0].slice(1); // Extract username without "@" symbol
+      const message = parts[1].trim(); // Extract the message content
 
-// Function to handle replies from the owner and forward them to the original sender
-bot.on('text', (ctx) => {
-  if (ctx.from.id.toString() === ownerId && ctx.message.reply_to_message) {
-    console.log(`Owner is replying to message ID: ${ctx.message.reply_to_message.message_id}`);
-    const originalMessageId = ctx.message.reply_to_message.message_id;
-    if (userFeedbackMap.has(originalMessageId)) {
-      const targetUserId = userFeedbackMap.get(originalMessageId);
-      console.log(`Sending reply to user ID: ${targetUserId}`);
-      ctx.telegram.sendMessage(targetUserId, ctx.message.text)
-        .then(() => {
-          console.log(`Reply sent to user ID: ${targetUserId}`);
-          // Optionally, remove the mapping once the reply is sent
-          userFeedbackMap.delete(originalMessageId);
-        })
-        .catch((error) => {
-          console.error('Error sending reply:', error);
-          ctx.reply('There was an error sending your reply. Please try again later.');
-        });
+      // Find the user ID using username (implement username lookup logic here)
+      const targetUserId = findUserIdByUsername(username);
+
+      if (targetUserId) {
+        ctx.telegram.sendMessage(targetUserId, message)
+          .then(() => console.log(`Message sent to user ID: ${targetUserId}`))
+          .catch((error) => {
+            console.error('Error sending message:', error);
+            ctx.reply('There was an error sending your message. Please try again later.');
+          });
+      } else {
+        ctx.reply('User not found.');
+      }
+    } else {
+      // Handle other messages from the admin (e.g., broadcast messages)
+      // ...
     }
+  } else {
+    // Forward messages from users to the owner
+    // ... (existing logic)
   }
 });
+
+// Implement logic to find user ID by username (replace with your method)
+function findUserIdByUsername(username) {
+  // Replace this with your actual username lookup logic using Telegram API
+  console.warn('Username lookup not implemented. Add your username lookup logic here.');
+  return null;
+}
 
 // Start polling
 bot.launch();
