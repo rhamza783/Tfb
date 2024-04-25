@@ -1,12 +1,13 @@
-// index.js
-// Required modules
+"index.js"
+ // Required modules
 const Telegraf = require('telegraf');
 const fs = require('fs'); // For logging to a file
+const punycode = require('punycode.js'); // For punycode support
 
 // General settings
 let config = {
-    "token": process.env.BOT_TOKEN, // Use environment variable for the bot token
-    "admin": process.env.OWNER_ID // Use environment variable for the admin ID
+    "token": "YOUR_TOKEN", // Replace with your actual bot token
+    "admin": 123456789 // Replace with the actual Telegram user ID of the bot owner
 };
 
 // Text settings for replies
@@ -41,36 +42,10 @@ let forwardToAdmin = (ctx) => {
     }
 };
 
-// Function to add a user ID to the file
-function addUser(userId) {
-    fs.appendFileSync('user_ids.txt', userId + '\n');
-}
-
-// Function to get all user IDs
-function getAllUserIds() {
-    try {
-        return fs.readFileSync('user_ids.txt', 'utf8').split('\n').filter(Boolean);
-    } catch (error) {
-        console.error('Error reading user IDs:', error);
-        return [];
-    }
-}
-
-// Function to broadcast a message to all users
-function broadcastMessage(message) {
-    let allUserIds = getAllUserIds();
-    allUserIds.forEach(userId => {
-        bot.telegram.sendMessage(userId, message).catch(error => {
-            console.error(`Failed to send message to ${userId}:`, error);
-        });
-    });
-}
-
 // Bot command and message handlers
 const bot = new Telegraf(config.token);
 
 bot.start((ctx) => {
-    addUser(ctx.from.id.toString());
     ctx.reply(isAdmin(ctx.message.from.id) ? replyText.helloAdmin : replyText.helloUser);
     logMessage(`Start command used by ${ctx.from.id}`);
 });
@@ -85,18 +60,25 @@ bot.command('report', (ctx) => {
     logMessage(`Report from ${ctx.from.id}: ${ctx.message.text}`);
 });
 
-bot.command('broadcast', (ctx) => {
-    if (isAdmin(ctx.from.id)) {
-        let message = ctx.message.text.split(' ').slice(1).join(' ');
-        broadcastMessage(message);
-        ctx.reply('Broadcast sent.');
-    } else {
-        ctx.reply('You do not have permission to use this command.');
+bot.command('ping', async (ctx) => {
+    const startTimestamp = Date.now();
+    try {
+        await bot.telegram.sendMessage(ctx.chat.id, 'Pong!');
+        const endTimestamp = Date.now();
+        const ping = endTimestamp - startTimestamp;
+        ctx.reply(`Bot response time: ${ping} ms`);
+    } catch (error) {
+        console.error('Error sending message:', error);
+        ctx.reply('An error occurred while checking ping. Please try again later.');
     }
 });
 
 bot.on('message', (ctx) => {
-    forwardToAdmin(ctx);
+    if (ctx.message.reply_to_message && ctx.message.reply_to_message.forward_from && isAdmin(ctx.message.from.id)) {
+        ctx.telegram.sendCopy(ctx.message.reply_to_message.forward_from.id, ctx.message);
+    } else {
+        forwardToAdmin(ctx);
+    }
 });
 
 // Launching the bot
@@ -106,4 +88,4 @@ bot.launch()
 
 // Graceful stop handling
 process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGTERM', () => bot.stop('SIGTERM')); 
