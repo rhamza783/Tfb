@@ -23,18 +23,6 @@ bot.command('about', (ctx) => {
   ctx.reply('This is a Telegram bot created using Telegraf by Hamza Younis.');
 });
 
-// Register the /ping command with response time
-bot.command('ping', (ctx) => {
-  const startTime = Date.now();
-  const args = ctx.message.text.split(' ').slice(1);
-  const responseTime = Date.now() - startTime;
-  let response = `Pong!\nResponse time: ${responseTime} ms`;
-  if (args.length > 0) {
-    response += `\nReceived parameters: ${args.join(', ')}`;
-  }
-  ctx.reply(response);
-});
-
 // Function to forward messages from users to the owner
 bot.on('text', (ctx) => {
   if (ctx.from.id.toString() !== ownerId) {
@@ -63,6 +51,22 @@ bot.command('broadcast', (ctx) => {
       });
   });
   ctx.reply('Broadcast sent to all users.');
+});
+
+// Register the /ping command
+bot.command('ping', (ctx) => {
+  const startTime = Date.now();
+
+  // Simulate some processing time (you can replace this with actual logic)
+  let result = 0;
+  for (let i = 0; i < 10000; i++) {
+    result += i;
+  }
+
+  const responseTime = Date.now() - startTime;
+  const response = `Pong!\nResponse time: ${responseTime} ms (including simulated math operation).`;
+
+  ctx.reply(response);
 });
 
 // Start polling
