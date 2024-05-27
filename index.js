@@ -18,39 +18,32 @@ bot.command('help', (ctx) => {
   ctx.reply('Hey, I am Hamza Younis. How can I assist you? Feel free to chat with me.');
 });
 
-// Handle user messages
+// Register the /about command
+bot.command('about', (ctx) => {
+  ctx.reply('This is a Telegram bot created using Telegraf by Hamza Younis.');
+});
+
+// Register the /ping command with response time
+bot.command('ping', (ctx) => {
+  const startTime = Date.now();
+  const args = ctx.message.text.split(' ').slice(1);
+  const responseTime = Date.now() - startTime;
+  let response = `Pong!\nResponse time: ${responseTime} ms`;
+  if (args.length > 0) {
+    response += `\nReceived parameters: ${args.join(', ')}`;
+  }
+  ctx.reply(response);
+});
+
+// Function to forward messages from users to the owner
 bot.on('text', (ctx) => {
-  const userId = ctx.from.id;
-  const userMessage = ctx.message.text;
-
-  // Process the user's message (e.g., analyze it, determine the appropriate response)
-
-  // Example: If the user sends "image", reply with an image
-  if (userMessage.toLowerCase() === 'image') {
-    ctx.replyWithPhoto({ source: 'path/to/your/image.jpg' });
-  }
-  // Example: If the user sends "video", reply with a video
-  else if (userMessage.toLowerCase() === 'video') {
-    ctx.replyWithVideo({ source: 'path/to/your/video.mp4' });
-  }
-  // Example: If the user sends "audio", reply with an audio file
-  else if (userMessage.toLowerCase() === 'audio') {
-    ctx.replyWithAudio({ source: 'path/to/your/audio.mp3' });
-  }
-  // Default response for other messages
-  else {
-    // Customize this response based on your requirements
-    ctx.reply('Thank you for your message! Feel free to send any type of content.');
-  }
-
-  // Forward the message to the owner
-  if (userId.toString() !== ownerId) {
-    console.log(`Forwarding message from ${userId} to owner.`);
-    ctx.telegram.forwardMessage(ownerId, userId, ctx.message.message_id)
+  if (ctx.from.id.toString() !== ownerId) {
+    console.log(`Forwarding message from ${ctx.from.id} to owner.`);
+    ctx.telegram.forwardMessage(ownerId, ctx.from.id, ctx.message.message_id)
       .then((forwardedMessage) => {
         console.log(`Message forwarded to owner with message ID: ${forwardedMessage.message_id}`);
         // Store the mapping of the forwarded message to the original sender's ID
-        userIDs.push(userId.toString());
+        userIDs.push(ctx.from.id.toString());
         fs.writeFileSync(userIDsFile, userIDs.join('\n'));
       })
       .catch((error) => {
@@ -75,5 +68,3 @@ bot.command('broadcast', (ctx) => {
 // Start polling
 bot.launch();
 
-// Start polling
-bot.launch();
