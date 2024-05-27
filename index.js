@@ -1,70 +1,98 @@
-const { Telegraf } = require('telegraf');
-require('dotenv').config();
+const Telegraf = require('telegraf');
 const fs = require('fs');
+const punycode = require('punycode.js');
+const moment = require('moment');
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
-const ownerId = process.env.OWNER_ID; // Bot owner's Telegram ID
-const userIDsFile = 'user_ids.txt'; // File to store user IDs
+// General settings
+let config = {
+    "token": "YOUR_BOT_TOKEN", // Replace with your actual bot token
+    "admin": 123456789 // Replace with the actual Telegram user ID of the bot owner
+};
 
-// Load existing user IDs from the file (if any)
-let userIDs = [];
-if (fs.existsSync(userIDsFile)) {
-  const data = fs.readFileSync(userIDsFile, 'utf8');
-  userIDs = data.split('\n').filter((id) => id.trim() !== '');
+// Text settings for replies
+let replyText = {
+    "helloAdmin": "Now share your bot and wait for messages.",
+    "helloUser": "Greetings, send me a message. I will try to answer as soon as possible.",
+    "replyWrong": "Please use the Reply function to reply to the user's message directly.",
+    "help": "Here are the commands you can use: /feedback, /report, /help",
+    "feedback": "Thank you for your feedback!",
+    "report": "Your report has been recorded. We will look into it shortly."
+};
+
+// Function to check if a user is an admin
+let isAdmin = (userId) => {
+    return userId == config.admin;
+};
+
+// Function to log messages
+function logMessage(message) {
+    fs.appendFile('bot.log', message + '\n', (err) => {
+        if (err) throw err;
+    });
 }
 
-// Register the /help command
-bot.command('help', (ctx) => {
-  ctx.reply('Hey, I am Hamza Younis. How can I assist you? Feel free to chat with me.');
+// Function to calculate uptime
+let startTime = moment();
+function getUptime() {
+    const now = moment();
+    const uptime = moment.duration(now.diff(startTime));
+    return uptime.format('d [days], h [hours], m [minutes], s [seconds]');
+}
+
+// Function to forward messages to the admin
+let forwardToAdmin = (ctx) => {
+    if (isAdmin(ctx.message.from.id)) {
+        ctx.reply(replyText.replyWrong);
+    } else {
+        ctx.forwardMessage(config.admin, ctx.from.id, ctx.message.id);
+        logMessage(`Message from ${ctx.from.id}: ${ctx.message.text}`);
+    }
+};
+
+// Bot command and message handlers
+const bot = new Telegraf(config.token);
+
+bot.start((ctx) => {
+    ctx.reply(isAdmin(ctx.message.from.id) ? replyText.helloAdmin : replyText.helloUser);
+    logMessage(`Start command used by ${ctx.from.id}`);
 });
 
-// Register the /about command
-bot.command('about', (ctx) => {
-  ctx.reply('This is a Telegram bot created using Telegraf by Hamza Younis.');
+bot.command('help', (ctx) => ctx.reply(replyText.help));
+bot.command('feedback', (ctx) => {
+    ctx.reply(replyText.feedback);
+    logMessage(`Feedback from ${ctx.from.id}: ${ctx.message.text}`);
+});
+bot.command('report', (ctx) => {
+    ctx.reply(replyText.report);
+    logMessage(`Report from ${ctx.from.id}: ${ctx.message.text}`);
 });
 
-// Register the /ping command with response time
-bot.command('ping', (ctx) => {
-  const startTime = Date.now();
-  const args = ctx.message.text.split(' ').slice(1);
-  const responseTime = Date.now() - startTime;
-  let response = `Pong!\nResponse time: ${responseTime} ms`;
-  if (args.length > 0) {
-    response += `\nReceived parameters: ${args.join(', ')}`;
-  }
-  ctx.reply(response);
+bot.command('ping', async (ctx) => {
+    const startTimestamp = Date.now();
+    try {
+        await bot.telegram.sendMessage(ctx.chat.id, 'Pong!');
+        const endTimestamp = Date.now();
+        const ping = endTimestamp - startTimestamp;
+        ctx.reply(`Bot response time: ${ping} ms`);
+    } catch (error) {
+        console.error('Error sending message:', error);
+        ctx.reply('An error occurred while checking ping. Please try again later.');
+    }
 });
 
-// Function to forward messages from users to the owner
-bot.on('text', (ctx) => {
-  if (ctx.from.id.toString() !== ownerId) {
-    console.log(`Forwarding message from ${ctx.from.id} to owner.`);
-    ctx.telegram.forwardMessage(ownerId, ctx.from.id, ctx.message.message_id)
-      .then((forwardedMessage) => {
-        console.log(`Message forwarded to owner with message ID: ${forwardedMessage.message_id}`);
-        // Store the mapping of the forwarded message to the original sender's ID
-        userIDs.push(ctx.from.id.toString());
-        fs.writeFileSync(userIDsFile, userIDs.join('\n'));
-      })
-      .catch((error) => {
-        console.error('Error forwarding message:', error);
-        ctx.reply('There was an error sending your message. Please try again later.');
-      });
-  }
+bot.on('message', (ctx) => {
+    if (ctx.message.reply_to_message && ctx.message.reply_to_message.forward_from && isAdmin(ctx.message.from.id)) {
+        ctx.telegram.sendCopy(ctx.message.reply_to_message.forward_from.id, ctx.message);
+    } else {
+        forwardToAdmin(ctx);
+    }
 });
 
-// Register the /broadcast command
-bot.command('broadcast', (ctx) => {
-  const broadcastMessage = 'Hello, this is a broadcast message from your bot!'; // Set your desired broadcast message
-  userIDs.forEach((userID) => {
-    ctx.telegram.sendMessage(userID, broadcastMessage)
-      .catch((error) => {
-        console.error(`Error sending broadcast message to user ID: ${userID}`, error);
-      });
-  });
-  ctx.reply('Broadcast sent to all users.');
-});
+// Launching the bot
+bot.launch()
+    .then(() => console.log("Bot Launched"))
+    .catch(console.error);
 
-// Start polling
-bot.launch();
-
+// Graceful stop handling
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));
